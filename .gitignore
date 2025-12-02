@@ -1,0 +1,9 @@
+*.gguf
+*.pdf
+*.pyc
+__pycache__/
+.env
+.ipynb_checkpoints/
+venv/
+.DS_Store
+.content

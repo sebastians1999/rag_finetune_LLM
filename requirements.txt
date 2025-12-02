@@ -1,0 +1,14 @@
+gradio
+langchain
+langchain-community
+langchain-docling
+sentence-transformers
+hopsworks[python] == 4.4.*
+llama-cpp-python
+python-dotenv
+langchain-text-splitters
+faiss-cpu
+numpy
+pandas
+
+
