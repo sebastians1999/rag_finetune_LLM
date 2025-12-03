@@ -8,21 +8,25 @@ from llama_cpp import Llama
 import faiss
 import numpy as np
 import os
+import json
 from dotenv import load_dotenv
 
 # 1. Load Environment Variables & Validation
 load_dotenv()
 
 HOPSWORKS_API_KEY = os.getenv("HOPSWORKS_API_KEY")
-MODEL_REPO_ID = os.getenv("MODEL_REPO_ID", "your-username/your-model-repo")
-MODEL_FILENAME = os.getenv("MODEL_FILENAME", "model.gguf")
 
 if not HOPSWORKS_API_KEY:
     raise ValueError("HOPSWORKS_API_KEY not found in environment variables.")
 
+# Load models configuration
+with open("models_config.json", "r") as f:
+    models_config = json.load(f)
 
-print("Using model:", MODEL_REPO_ID, "with file:", MODEL_FILENAME)
-print("Initializing models and connecting to Hopsworks...")
+# Global variable to store the current LLM
+llm = None
+
+print("Initializing embeddings and connecting to Hopsworks...")
 
 try:
     embeddings = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -46,21 +50,38 @@ try:
     faiss.normalize_L2(embedding_vectors)
     index.add(embedding_vectors)
 
-    llm = Llama.from_pretrained(
-        repo_id=MODEL_REPO_ID,
-        filename=MODEL_FILENAME,
-        n_ctx=2048,
-        n_threads=4,
-        n_gpu_layers=-1, 
-        verbose=False
-    )
-    
-    print("Initialization complete.")
+    print("Embeddings and FAISS index initialized.")
 
 except Exception as e:
     print(f"Critical Error during initialization: {e}")
-    llm = None
     index = None
+
+# Function to load a model dynamically
+def load_model(model_name):
+    global llm
+    try:
+        # Find the model config
+        model_config = next((m for m in models_config["models"] if m["name"] == model_name), None)
+        if not model_config:
+            return f"Error: Model '{model_name}' not found in config."
+
+        print(f"Loading model: {model_config['name']}...")
+        print(f"Repo: {model_config['repo_id']}, File: {model_config['filename']}")
+
+        llm = Llama.from_pretrained(
+            repo_id=model_config["repo_id"],
+            filename=model_config["filename"],
+            n_ctx=2048,
+            n_threads=4,
+            n_gpu_layers=-1,
+            verbose=False
+        )
+
+        return f"Model '{model_name}' loaded successfully."
+
+    except Exception as e:
+        llm = None
+        return f"Error loading model: {str(e)}"
 
 def retrieve_context(query, k=3):
     if index is None:
@@ -114,17 +135,48 @@ Answer:"""
         yield partial_message
 
 with gr.Blocks(title="Hopsworks RAG ChatBot") as demo:
+    gr.Markdown("<h1 style='text-align: center; color: #1EB382'>Hopsworks RAG ChatBot</h1>")
+
+    # Model Selection Section
     with gr.Row():
-        #gr.Image("images/hopsworks_image.jpeg", height=80, width=80, show_label=False, container=False)
-        gr.Markdown("<h1>Hopsworks RAG ChatBot</h1>")
-    
+        model_dropdown = gr.Dropdown(
+            choices=[m["name"] for m in models_config["models"]],
+            label="Select Model",
+            value=models_config["models"][0]["name"],
+            scale=3
+        )
+        load_button = gr.Button("Load Model", variant="primary", scale=1)
+
+    status_box = gr.Textbox(
+        label="Status",
+        value="⚠️ Please load a model to start chatting",
+        interactive=False
+    )
+
+    # Model info display
+    model_info = gr.Markdown("")
+
+    # Chat Interface
     chat_interface = gr.ChatInterface(
         fn=respond,
-        chatbot=gr.Chatbot(height=500),
-        textbox=gr.Textbox(placeholder="Ask a question about your Hopsworks...", container=False, scale=7),
+        chatbot=gr.Chatbot(height=400),
+        textbox=gr.Textbox(placeholder="Ask a question about your documents...", container=False, scale=7),
         examples=["What is the main topic of the documents?", "Summarize the key points."],
         cache_examples=False,
     )
+
+    # Update model info when dropdown changes
+    def update_model_info(model_name):
+        model = next((m for m in models_config["models"] if m["name"] == model_name), None)
+        if model:
+            return f"**{model['name']}**\n\n{model['description']}\n\n📦 Repo: `{model['repo_id']}`\n\n📄 File: `{model['filename']}`"
+        return ""
+
+    model_dropdown.change(update_model_info, inputs=[model_dropdown], outputs=[model_info])
+    load_button.click(load_model, inputs=[model_dropdown], outputs=[status_box])
+
+    # Load default model info on startup
+    demo.load(lambda: update_model_info(models_config["models"][0]["name"]), outputs=[model_info])
 
 if __name__ == "__main__":
     demo.launch(share=True)

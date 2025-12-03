@@ -1,0 +1,28 @@
+{
+  "models": [
+    {
+      "name": "SmolLM2 1.7B Instruct",
+      "repo_id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+      "filename": "model.gguf",
+      "description": "Lightweight 1.7B parameter model, fast inference"
+    },
+    {
+      "name": "Qwen3 4B Instruct Q4",
+      "repo_id": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "filename": "qwen3-4b-instruct-q4_k_m.gguf",
+      "description": "4B parameter model with 4-bit quantization"
+    },
+    {
+      "name": "Custom Model",
+      "repo_id": "your-username/your-model-repo",
+      "filename": "model.gguf",
+      "description": "Your finetuned model - update config with your model ID"
+    }
+    {
+      "name": "nsloth/Qwen3-1.7B-GGUF",
+      "repo_id": "Qwen3-1.7B-IQ4_XS.gguf",
+      "filename": "model.gguf",
+      "description": "1.7B parameter model, good balance between performance and speed"
+    }
+  ]
+}
