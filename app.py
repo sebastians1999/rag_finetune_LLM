@@ -1,3 +1,6 @@
+import subprocess
+subprocess.run("pip install llama-cpp-python==0.3.15", shell=True, check=True)
+
 import gradio as gr
 import hopsworks
 from sentence_transformers import SentenceTransformer
