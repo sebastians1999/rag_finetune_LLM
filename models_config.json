@@ -1,28 +1,37 @@
 {
-  "models": [
+  "repositories": [
     {
-      "name": "SmolLM2 1.7B Instruct",
-      "repo_id": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-      "filename": "model.gguf",
-      "description": "Lightweight 1.7B parameter model, fast inference"
-    },
-    {
-      "name": "Qwen3 4B Instruct Q4",
+      "name": "Unsloth - Qwen3 4B",
       "repo_id": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
-      "filename": "qwen3-4b-instruct-q4_k_m.gguf",
-      "description": "4B parameter model with 4-bit quantization"
+      "models": [
+        {
+          "name": "Qwen3 4B IQ4_XS",
+          "filename": "en3-4B-Instruct-2507-IQ4_XS.gguf",
+          "description": "4-bit quantization. Very slow on CPU (free CPU inference not recommended)."
+        }
+      ]
     },
     {
-      "name": "Custom Model",
-      "repo_id": "your-username/your-model-repo",
-      "filename": "model.gguf",
-      "description": "Your finetuned model - update config with your model ID"
+      "name": "HuggingFace TB - SmolLM2 1.7B",
+      "repo_id": "HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",
+      "models": [
+        {
+          "name": "SmolLM2 1.7B Q4_K_M",
+          "filename": "smollm2-1.7b-instruct-q4_k_m.gguf",
+          "description": "Lightweight 1.7B parameter model, fast inference (Recommended)"
+        }
+      ]
     },
     {
-      "name": "unsloth/Qwen3-1.7B-GGUF",
-      "repo_id": "Qwen3-1.7B-IQ4_XS.gguf",
-      "filename": "model.gguf",
-      "description": "1.7B parameter model, good balance between performance and speed"
+      "name": "Unsloth - Qwen3 1.7B",
+      "repo_id": "unsloth/Qwen3-1.7B-GGUF",
+      "models": [
+        {
+          "name": "Qwen3 1.7B IQ4_XS",
+          "filename": "Qwen3-1.7B-IQ4_XS.gguf",
+          "description": "Good balance between performance and speed"
+        }
+      ]
     }
   ]
 }

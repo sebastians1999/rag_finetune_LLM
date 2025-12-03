@@ -9,6 +9,7 @@ import faiss
 import numpy as np
 import os
 import json
+import yaml
 from dotenv import load_dotenv
 
 # 1. Load Environment Variables & Validation
@@ -22,6 +23,10 @@ if not HOPSWORKS_API_KEY:
 # Load models configuration
 with open("models_config.json", "r") as f:
     models_config = json.load(f)
+
+# Load RAG prompt configuration
+with open("prompts/rag_prompt.yml", "r") as f:
+    prompt_config = yaml.safe_load(f)
 
 # Global variable to store the current LLM
 llm = None
@@ -57,47 +62,66 @@ except Exception as e:
     index = None
 
 # Function to load a model dynamically
-def load_model(model_name):
+def load_model(repo_name, model_name, progress=gr.Progress()):
     global llm
     try:
-        # Find the model config
-        model_config = next((m for m in models_config["models"] if m["name"] == model_name), None)
-        if not model_config:
-            return f"Error: Model '{model_name}' not found in config."
+        progress(0, desc="Initializing...")
 
-        print(f"Loading model: {model_config['name']}...")
-        print(f"Repo: {model_config['repo_id']}, File: {model_config['filename']}")
+        # Find the repository
+        repo = next((r for r in models_config["repositories"] if r["name"] == repo_name), None)
+        if not repo:
+            return f"Error: Repository '{repo_name}' not found in config."
+
+        # Find the model within the repository
+        model = next((m for m in repo["models"] if m["name"] == model_name), None)
+        if not model:
+            return f"Error: Model '{model_name}' not found in repository."
+
+        print(f"Loading model: {model['name']}...")
+        print(f"Repo: {repo['repo_id']}, File: {model['filename']}")
+
+        progress(0.3, desc=f"Downloading/Loading {model['name']}...")
 
         llm = Llama.from_pretrained(
-            repo_id=model_config["repo_id"],
-            filename=model_config["filename"],
+            repo_id=repo["repo_id"],
+            filename=model["filename"],
             n_ctx=2048,
             n_threads=4,
             n_gpu_layers=-1,
             verbose=False
         )
 
-        return f"Model '{model_name}' loaded successfully."
+        progress(1.0, desc="Complete!")
+        return f"✅ Model '{model_name}' loaded successfully!"
 
     except Exception as e:
         llm = None
-        return f"Error loading model: {str(e)}"
+        return f"❌ Error loading model: {str(e)}"
 
-def retrieve_context(query, k=3):
+def retrieve_context(query, k=None):
     if index is None:
         return "Error: Search index not initialized."
-        
+
+    # Use k from prompt config if not specified
+    if k is None:
+        k = prompt_config["rag"]["num_retrieved_chunks"]
+
     query_embedding = embeddings.encode(query).astype('float32').reshape(1, -1)
     faiss.normalize_L2(query_embedding)
-    
+
     distances, indices = index.search(query_embedding, k)
-    
+
     retrieved_texts = []
     for i in indices[0]:
         if 0 <= i < len(texts):
             retrieved_texts.append(texts[i])
-            
-    return "\n\n".join(retrieved_texts)
+
+    # Use separator from prompt config
+    separator = prompt_config["rag"]["context_separator"]
+
+    print(f"Retrieved {len(retrieved_texts)} context chunks for the query.")
+    print("Similarities:", distances)
+    return separator.join(retrieved_texts)
 
 def respond(message, history):
     """
@@ -108,26 +132,26 @@ def respond(message, history):
         yield "System Error: Models failed to load. Check console logs."
         return
 
-    context = retrieve_context(message, k=3)
+    # Retrieve context using config settings
+    context = retrieve_context(message)
 
-    prompt = f"""Use the following context to answer the question. If you don't know the answer, say you don't know.
+    # Build prompt from template
+    prompt = prompt_config["template"].format(
+        context=context,
+        question=message
+    )
 
-Context:
-{context}
-
-Question: {message}
-
-Answer:"""
-
+    # Get generation parameters from config
+    gen_params = prompt_config["generation"]
 
     output = llm(
         prompt,
-        max_tokens=256,
-        temperature=0.7,
-        stop=["Question:", "\n\n"],
-        stream=True  
+        max_tokens=gen_params["max_tokens"],
+        temperature=gen_params["temperature"],
+        stop=gen_params["stop_sequences"],
+        stream=True
     )
-    
+
     partial_message = ""
     for chunk in output:
         text_chunk = chunk["choices"][0]["text"]
@@ -139,17 +163,23 @@ with gr.Blocks(title="Hopsworks RAG ChatBot") as demo:
 
     # Model Selection Section
     with gr.Row():
+        repo_dropdown = gr.Dropdown(
+            choices=[r["name"] for r in models_config["repositories"]],
+            label="Select Repository",
+            value=models_config["repositories"][0]["name"],
+            scale=2
+        )
         model_dropdown = gr.Dropdown(
-            choices=[m["name"] for m in models_config["models"]],
+            choices=[m["name"] for m in models_config["repositories"][0]["models"]],
             label="Select Model",
-            value=models_config["models"][0]["name"],
-            scale=3
+            value=models_config["repositories"][0]["models"][0]["name"],
+            scale=2
         )
         load_button = gr.Button("Load Model", variant="primary", scale=1)
 
     status_box = gr.Textbox(
         label="Status",
-        value="⚠️ Please load a model to start chatting",
+        value="⚠️ Please select a repository and model, then click 'Load Model'",
         interactive=False
     )
 
@@ -165,18 +195,39 @@ with gr.Blocks(title="Hopsworks RAG ChatBot") as demo:
         cache_examples=False,
     )
 
-    # Update model info when dropdown changes
-    def update_model_info(model_name):
-        model = next((m for m in models_config["models"] if m["name"] == model_name), None)
+    # Function to update model dropdown when repository changes
+    def update_model_choices(repo_name):
+        repo = next((r for r in models_config["repositories"] if r["name"] == repo_name), None)
+        if repo and repo["models"]:
+            model_choices = [m["name"] for m in repo["models"]]
+            return gr.Dropdown(choices=model_choices, value=model_choices[0])
+        return gr.Dropdown(choices=[], value=None)
+
+    # Function to update model info display
+    def update_model_info(repo_name, model_name):
+        repo = next((r for r in models_config["repositories"] if r["name"] == repo_name), None)
+        if not repo:
+            return ""
+
+        model = next((m for m in repo["models"] if m["name"] == model_name), None)
         if model:
-            return f"**{model['name']}**\n\n{model['description']}\n\n📦 Repo: `{model['repo_id']}`\n\n📄 File: `{model['filename']}`"
+            return f"**{model['name']}**\n\n{model['description']}\n\n Repository: `{repo['repo_id']}`\n\n File: `{model['filename']}`"
         return ""
 
-    model_dropdown.change(update_model_info, inputs=[model_dropdown], outputs=[model_info])
-    load_button.click(load_model, inputs=[model_dropdown], outputs=[status_box])
+    # Event handlers
+    repo_dropdown.change(update_model_choices, inputs=[repo_dropdown], outputs=[model_dropdown])
+    repo_dropdown.change(update_model_info, inputs=[repo_dropdown, model_dropdown], outputs=[model_info])
+    model_dropdown.change(update_model_info, inputs=[repo_dropdown, model_dropdown], outputs=[model_info])
+    load_button.click(load_model, inputs=[repo_dropdown, model_dropdown], outputs=[status_box])
 
     # Load default model info on startup
-    demo.load(lambda: update_model_info(models_config["models"][0]["name"]), outputs=[model_info])
+    demo.load(
+        lambda: update_model_info(
+            models_config["repositories"][0]["name"],
+            models_config["repositories"][0]["models"][0]["name"]
+        ),
+        outputs=[model_info]
+    )
 
 if __name__ == "__main__":
     demo.launch(share=True)
