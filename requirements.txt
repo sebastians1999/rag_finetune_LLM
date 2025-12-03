@@ -3,10 +3,12 @@ langchain
 langchain-docling
 sentence-transformers
 hopsworks[python] == 4.4.*
-llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+transformers
+torch
+accelerate
 python-dotenv
 faiss-cpu
 numpy
 pandas
-
+ 
 

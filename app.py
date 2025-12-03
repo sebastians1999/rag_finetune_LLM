@@ -1,18 +1,20 @@
 import gradio as gr
 import hopsworks
 from sentence_transformers import SentenceTransformer
-from llama_cpp import Llama
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 import faiss
 import numpy as np
 import os
 from dotenv import load_dotenv
+from threading import Thread
 
 # 1. Load Environment Variables & Validation
 load_dotenv()
 
 HOPSWORKS_API_KEY = os.getenv("HOPSWORKS_API_KEY")
-MODEL_REPO_ID = os.getenv("MODEL_REPO_ID", "your-username/your-model-repo")
-MODEL_FILENAME = os.getenv("MODEL_FILENAME", "model.gguf")
+MODEL_ID = os.getenv("MODEL_ID", "HuggingFaceTB/SmolLM2-1.7B-Instruct")
+
+print("Using MODEL_ID:", MODEL_ID)
 
 if not HOPSWORKS_API_KEY:
     raise ValueError("HOPSWORKS_API_KEY not found in environment variables.")
@@ -42,13 +44,10 @@ try:
     faiss.normalize_L2(embedding_vectors)
     index.add(embedding_vectors)
 
-    llm = Llama.from_pretrained(
-        repo_id=MODEL_REPO_ID,
-        filename=MODEL_FILENAME,
-        n_ctx=2048,
-        n_threads=4,
-        n_gpu_layers=-1, 
-        verbose=False
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, padding_side="left")
+    llm = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        low_cpu_mem_usage=True
     )
     
     print("Initialization complete.")
@@ -56,6 +55,7 @@ try:
 except Exception as e:
     print(f"Critical Error during initialization: {e}")
     llm = None
+    tokenizer = None
     index = None
 
 def retrieve_context(query, k=3):
@@ -79,7 +79,7 @@ def respond(message, history):
     Generator function for streaming response.
     gr.ChatInterface passes 'message' and 'history' automatically.
     """
-    if llm is None:
+    if llm is None or tokenizer is None:
         yield "System Error: Models failed to load. Check console logs."
         return
 
@@ -94,25 +94,38 @@ Question: {message}
 
 Answer:"""
 
+  
+    model_inputs = tokenizer([prompt], return_tensors="pt").to(llm.device)
 
-    output = llm(
-        prompt,
-        max_tokens=256,
-        temperature=0.7,
-        stop=["Question:", "\n\n"],
-        stream=True  
-    )
     
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+
+    
+    generation_kwargs = dict(
+        **model_inputs,
+        streamer=streamer,
+        max_new_tokens=256,
+        do_sample=True,
+        temperature=0.7,
+        repetition_penalty=1.1
+    )
+
+    
+    thread = Thread(target=llm.generate, kwargs=generation_kwargs)
+    thread.start()
+
+   
     partial_message = ""
-    for chunk in output:
-        text_chunk = chunk["choices"][0]["text"]
-        partial_message += text_chunk
+    
+    for new_text in streamer:
+        partial_message += new_text
+        print("Generated so far:", partial_message)
         yield partial_message
 
 with gr.Blocks(title="Hopsworks RAG ChatBot") as demo:
     with gr.Row():
         #gr.Image("images/hopsworks_image.jpeg", height=80, width=80, show_label=False, container=False)
-        gr.Markdown("<h1>Hopsworks RAG ChatBot</h1>")
+        gr.Markdown("<h1 style='text-align: center'>Hopsworks RAG ChatBot</h1>")
     
     chat_interface = gr.ChatInterface(
         fn=respond,
