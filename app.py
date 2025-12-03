@@ -21,6 +21,7 @@ if not HOPSWORKS_API_KEY:
     raise ValueError("HOPSWORKS_API_KEY not found in environment variables.")
 
 
+print("Using model:", MODEL_REPO_ID, "with file:", MODEL_FILENAME)
 print("Initializing models and connecting to Hopsworks...")
 
 try:
