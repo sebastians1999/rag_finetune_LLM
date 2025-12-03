@@ -19,7 +19,7 @@
       "description": "Your finetuned model - update config with your model ID"
     },
     {
-      "name": "nsloth/Qwen3-1.7B-GGUF",
+      "name": "unsloth/Qwen3-1.7B-GGUF",
       "repo_id": "Qwen3-1.7B-IQ4_XS.gguf",
       "filename": "model.gguf",
       "description": "1.7B parameter model, good balance between performance and speed"
