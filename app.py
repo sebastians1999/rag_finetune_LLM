@@ -159,7 +159,7 @@ def respond(message, history):
         yield partial_message
 
 with gr.Blocks(title="Hopsworks RAG ChatBot") as demo:
-    gr.Markdown("<h1 style='text-align: center; color: #1EB382'>Hopsworks RAG ChatBot</h1>")
+    gr.Markdown("<h1 style='text-align: center; color: #1EB382'>Hopsworks ChatBot</h1>")
 
     # Model Selection Section
     with gr.Row():
