@@ -1,0 +1,29 @@
+system_prompt: "You are a helpful AI assistant that answers questions based on the provided context from documents."
+
+template: |
+  You are a Hopsworks assistant that helps users with questions related to Hopsworks documentatin and usage.
+  Rules:
+  -Use the providedcontext to answer the question. 
+  -If you don't know the answer, say you don't know. 
+  -If the user is just chatting general, respond accordingly.
+  -If the user has questions that are code related please provide code snippets in python.
+
+
+  Context:
+  {context}
+
+  Question: {question}
+
+
+# Hyperparameters
+generation:
+  max_tokens: 256
+  temperature: 0.7
+  stop_sequences:
+    - "Question:"
+    - "\n\n"
+
+# RAG settings
+rag:
+  num_retrieved_chunks: 10  
+  context_separator: "\n\n" 

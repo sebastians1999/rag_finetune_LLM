@@ -1,0 +1,52 @@
+{
+  "repositories": [
+    {
+      "name": "Unsloth - Qwen3 4B",
+      "repo_id": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+      "models": [
+        {
+          "name": "Qwen3 4B IQ4_XS",
+          "filename": "en3-4B-Instruct-2507-IQ4_XS.gguf",
+          "description": "4-bit quantization. Very slow on CPU (free CPU inference not recommended)."
+        }
+      ]
+    },
+    {
+      "name": "HuggingFace TB - SmolLM2 1.7B",
+      "repo_id": "HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",
+      "models": [
+        {
+          "name": "SmolLM2 1.7B Q4_K_M",
+          "filename": "smollm2-1.7b-instruct-q4_k_m.gguf",
+          "description": "Lightweight 1.7B parameter model, fast inference (Recommended)"
+        }
+      ]
+    },
+    {
+      "name": "Unsloth - Qwen3 1.7B",
+      "repo_id": "unsloth/Qwen3-1.7B-GGUF",
+      "models": [
+        {
+          "name": "Qwen3 1.7B IQ4_XS",
+          "filename": "Qwen3-1.7B-IQ4_XS.gguf",
+          "description": "Good balance between performance and speed"
+        }
+      ]
+    },
+    {
+      "name": "Unsloth - Ministral 3 3B Instruct",
+      "repo_id": "unsloth/Ministral-3-3B-Instruct-2512-GGUF",
+      "models": [
+        {
+          "name": "Ministral 3 3B Instruct IQ4_NL",
+          "filename": "Ministral-3-3B-Instruct-2512-IQ4_NL.gguf",
+          "description": "4-bit quantization of Ministral 3B Instruct model"
+        }
+      ]
+    }
+  ]
+}
+
+
+
+

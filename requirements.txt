@@ -1,0 +1,12 @@
+gradio>=6.0.0
+langchain
+langchain-docling
+sentence-transformers
+hopsworks[python] == 4.4.*
+python-dotenv
+faiss-cpu
+numpy
+pandas
+pyyaml
+
+
