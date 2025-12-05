@@ -32,6 +32,21 @@
           "description": "Good balance between performance and speed"
         }
       ]
+    },
+    {
+      "name": "Unsloth - Ministral 3 3B Instruct",
+      "repo_id": "unsloth/Ministral-3-3B-Instruct-2512-GGUF",
+      "models": [
+        {
+          "name": "Ministral 3 3B Instruct IQ4_NL",
+          "filename": "Ministral-3-3B-Instruct-2512-IQ4_NL.gguf",
+          "description": "4-bit quantization of Ministral 3B Instruct model"
+        }
+      ]
     }
   ]
 }
+
+
+
+
