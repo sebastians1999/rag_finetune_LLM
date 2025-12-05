@@ -32,7 +32,7 @@ with open("prompts/rag_prompt.yml", "r") as f:
 llm = None
 
 print("Initializing embeddings and connecting to Hopsworks...")
-
+# 
 try:
     embeddings = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
